@@ -39,10 +39,38 @@ export class PageSnapshot {
     return this._text;
   }
 
+  // private async _build() {
+
+  //   const snapshot = await callOnPageNoTrace(this._page, page => (page as PageEx)._snapshotForAI());
+  //   this._text = [
+  //     `- blablablabllabla Page Snapshot:`,
+  //     '```yaml',
+  //     snapshot,
+  //     '```',
+  //   ].join('\n');
+  // }
+
+
   private async _build() {
-    const snapshot = await callOnPageNoTrace(this._page, page => (page as PageEx)._snapshotForAI());
+    const maxRetries = 2;
+    let attempt = 0;
+    let snapshot = '';
+
+    while (attempt <= maxRetries) {
+      await this._simulateScroll();
+
+      // Give the DOM a chance to fully update
+      await this._page.waitForTimeout(500);
+
+      // Capture snapshot
+      snapshot = await callOnPageNoTrace(this._page, page =>
+        (page as PageEx)._snapshotForAI()
+      );
+      attempt++;
+    }
+
     this._text = [
-      `- Page Snapshot:`,
+      `- more complete Page Snapshot`,
       '```yaml',
       snapshot,
       '```',
@@ -52,4 +80,17 @@ export class PageSnapshot {
   refLocator(params: { element: string, ref: string }): playwright.Locator {
     return this._page.locator(`aria-ref=${params.ref}`).describe(params.element);
   }
+
+  private async _simulateScroll() {
+    await this._page.evaluate(async () => {
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      const scrollHeight = document.body.scrollHeight;
+      for (let y = 0; y < scrollHeight; y += 400) {
+        window.scrollTo(0, y);
+        await delay(200);
+      }
+      window.scrollTo(0, scrollHeight); // final scroll to bottom
+    });
+  }
+
 }
