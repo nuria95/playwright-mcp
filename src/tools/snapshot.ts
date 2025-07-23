@@ -67,18 +67,31 @@ const click = defineTool({
     const button = params.button;
     const buttonAttr = button ? `{ button: '${button}' }` : '';
 
+    const screenshotPath = `screenshot_click/${params.element}-${Date.now()}.png`;
     const code: string[] = [];
     if (params.doubleClick) {
       code.push(`// Double click ${params.element}`);
       code.push(`await page.${await generateLocator(locator)}.dblclick(${buttonAttr});`);
+      code.push(`Saving screenshot in ${screenshotPath}`)
     } else {
       code.push(`// Click ${params.element}`);
       code.push(`await page.${await generateLocator(locator)}.click(${buttonAttr});`);
+      code.push(`Saving screenshot in ${screenshotPath}`)
     }
 
     return {
       code,
-      action: () => params.doubleClick ? locator.dblclick({ button }) : locator.click({ button }),
+      action: async () => {
+      
+      await tab.page.screenshot({ path: screenshotPath, fullPage: true });
+      if (params.doubleClick) {
+        await locator.dblclick({ button });
+      } else {
+        await locator.click({ button });
+      }
+      
+
+    },
       captureSnapshot: true,
       waitForNetwork: true,
     };
